@@ -5,7 +5,7 @@ import time
 
 # دریافت متغیرهای محیطی
 TOKEN = os.getenv("TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa-1.onrender.com/webhook")
+WEBHOOK_URL = "https://neovisa-1.onrender.com/webhook"  # آدرس ثابت
 ADMIN_ID = 7549512366
 
 # تنظیم ربات
@@ -16,10 +16,13 @@ user_data = {}
 # تنظیم خودکار Webhook
 def set_webhook():
     try:
-        bot.remove_webhook()  # حذف Webhook قبلی (در صورت وجود)
-        time.sleep(1)  # صبر برای اطمینان از حذف
-        bot.set_webhook(url=WEBHOOK_URL)
-        print(f"Webhook set to {WEBHOOK_URL}")
+        bot.remove_webhook()  # حذف Webhook قبلی
+        time.sleep(1)  # صبر برای اطمینان
+        status = bot.set_webhook(url=WEBHOOK_URL)
+        if status:
+            print(f"Webhook successfully set to {WEBHOOK_URL}")
+        else:
+            print(f"Failed to set webhook to {WEBHOOK_URL}")
     except Exception as e:
         print(f"Error setting webhook: {e}")
 
