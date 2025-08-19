@@ -2,10 +2,9 @@ import telebot
 from flask import Flask, request
 import os
 
-# توکن واقعی ربات neovisa
 TOKEN = os.getenv("TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa.onrender.com/webhook")  # آدرس Render جدید
-ADMIN_ID = 7549512366  # ادمین رو می‌تونی تغییر بدی
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa.onrender.com/webhook")
+ADMIN_ID = 7549512366
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -108,5 +107,5 @@ bot.remove_webhook()
 bot.set_webhook(url=WEBHOOK_URL)
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5002))  # پورت متفاوت برای neovisa
+    port = int(os.getenv("PORT", 5002))
     app.run(host="0.0.0.0", port=port)
