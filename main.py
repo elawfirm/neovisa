@@ -74,6 +74,7 @@ def handle_name(message):
     if cid in user_data and "name" not in user_data[cid]:
         user_data[cid]["name"] = message.text.strip()
         user_data[cid]["step"] = "details"
+        bot.send_message(cid, f"🔍 دیباگ: نوع انتخاب‌شده: {user_data[cid].get('type')}")  # دیباگ موقت
         if user_data[cid].get("type") == "spain":
             send_spain_questions(cid)
         elif user_data[cid].get("type") == "other":
