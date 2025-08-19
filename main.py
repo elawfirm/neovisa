@@ -21,7 +21,7 @@ def set_webhook():
         time.sleep(1)
         bot.set_webhook(url=WEBHOOK_URL)
     except:
-        pass  # خطاها رو نادیده می‌گیریم تا برنامه متوقف نشه
+        pass
 
 # فراخوانی تنظیم Webhook موقع شروع
 set_webhook()
@@ -129,7 +129,7 @@ def handle_final_details(message):
     phone = user_data[cid]["phone"]
     consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
     bot.send_message(ADMIN_ID, f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}", parse_mode="Markdown")
-    del user_data[cid]  # پاک کردن داده‌ها بعد از تکمیل
+    del user_data[cid]
 
 # پیکربندی webhook
 @app.route("/webhook", methods=["POST"])
@@ -146,5 +146,5 @@ def index():
     return "ربات نئوویزا فعال است ⚖️"
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))  # پورت پیش‌فرض Render
+    port = int(os.getenv("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
