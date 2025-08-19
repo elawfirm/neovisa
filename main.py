@@ -1,14 +1,30 @@
 import telebot
 from flask import Flask, request
 import os
+import time
 
+# دریافت متغیرهای محیطی
 TOKEN = os.getenv("TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa-1.onrender.com/webhook")
 ADMIN_ID = 7549512366
 
+# تنظیم ربات
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 user_data = {}
+
+# تنظیم خودکار Webhook
+def set_webhook():
+    try:
+        bot.remove_webhook()  # حذف Webhook قبلی (در صورت وجود)
+        time.sleep(1)  # صبر برای اطمینان از حذف
+        bot.set_webhook(url=WEBHOOK_URL)
+        print(f"Webhook set to {WEBHOOK_URL}")
+    except Exception as e:
+        print(f"Error setting webhook: {e}")
+
+# فراخوانی تنظیم Webhook موقع شروع
+set_webhook()
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -58,5 +74,5 @@ def webhook():
     return "Unsupported", 403
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))  # پورت رو با 10000 ست کن
+    port = int(os.getenv("PORT", 10000))  # پورت Render
     app.run(host="0.0.0.0", port=port)
