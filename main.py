@@ -136,15 +136,18 @@ def process_other_details(call):
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details" and message.content_type == "text")
 def handle_final_details(message):
     cid = message.chat.id
-    bot.send_message(cid, "🔍 دیباگ: رسیدم به مرحله نهایی!")  # دیباگ موقت
-    details = message.text
-    user_data[cid]["details"] += f" | {details}" if user_data[cid].get("details") else details
-    name = user_data[cid]["name"]
-    phone = user_data[cid]["phone"]
-    consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
-    bot.send_message(ADMIN_ID, f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}", parse_mode="Markdown")
-    bot.send_message(cid, "🎉 درخواست شما ثبت شد! تیم نئوویزا به زودی تماس می‌گیرد.")  # پیام تأیید به کاربر
-    del user_data[cid]
+    if all(key in user_data[cid] for key in ["name", "phone", "details"]):  # چک کامل بودن داده‌ها
+        bot.send_message(cid, "🔍 دیباگ: رسیدم به مرحله نهایی!")
+        details = message.text
+        user_data[cid]["details"] += f" | {details}" if user_data[cid].get("details") else details
+        name = user_data[cid]["name"]
+        phone = user_data[cid]["phone"]
+        consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
+        bot.send_message(ADMIN_ID, f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}", parse_mode="Markdown")
+        bot.send_message(cid, "🎉 درخواست شما ثبت شد! تیم نئوویزا به زودی تماس می‌گیرد.")
+        del user_data[cid]
+    else:
+        bot.send_message(cid, "❌ داده‌ها ناقصند! لطفاً دوباره /start را بزنید.")
 
 # پیکربندی webhook
 @app.route("/webhook", methods=["POST"])
