@@ -1,12 +1,13 @@
 import telebot
+from telebot import types
 from flask import Flask, request
 import os
 import time
 
 # دریافت متغیرهای محیطی
 TOKEN = os.getenv("TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
+ADMIN_ID = os.getenv("ADMIN_ID", 7549512366)
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa-1.onrender.com/webhook")
-ADMIN_ID = 7549512366
 
 # تنظیم ربات
 bot = telebot.TeleBot(TOKEN)
@@ -16,54 +17,134 @@ user_data = {}
 # تنظیم خودکار Webhook
 def set_webhook():
     try:
-        bot.remove_webhook()  # حذف Webhook قبلی (در صورت وجود)
-        time.sleep(1)  # صبر برای اطمینان از حذف
+        bot.remove_webhook()
+        time.sleep(1)
         bot.set_webhook(url=WEBHOOK_URL)
-        print(f"Webhook set to {WEBHOOK_URL}")
-    except Exception as e:
-        print(f"Error setting webhook: {e}")
+    except:
+        pass
 
 # فراخوانی تنظیم Webhook موقع شروع
 set_webhook()
 
+# پیام خوش‌آمدگویی
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     cid = message.chat.id
     user_data[cid] = {}
-    markup = telebot.types.InlineKeyboardMarkup()
-    markup.add(telebot.types.InlineKeyboardButton("🌍 ویزای توریستی", callback_data="visa_tour"))
-    markup.add(telebot.types.InlineKeyboardButton("💼 ویزای کاری", callback_data="visa_work"))
-    markup.add(telebot.types.InlineKeyboardButton("🎓 ویزای تحصیلی", callback_data="visa_study"))
-    bot.send_message(cid, "🌐 *خوش آمدید به neovisa!* ✈️\nلطفاً نوع ویزای موردنظر را انتخاب کنید:", parse_mode="Markdown", reply_markup=markup)
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🌍 اقامت اسپانیا", callback_data="spain"),
+               types.InlineKeyboardButton("🌐 سایر کشورها", callback_data="other"))
+    bot.send_message(cid, "⚖️ *خوش آمدید به نئوویزا!* 🌍\n📜 نوع خدمت را انتخاب کنید:", parse_mode="Markdown", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data in ["visa_tour", "visa_work", "visa_study"])
-def process_visa_type(call):
+# پردازش انتخاب نوع مشاوره
+@bot.callback_query_handler(func=lambda call: call.data in ["spain", "other"])
+def process_consultation_type(call):
     cid = call.message.chat.id
     user_data[cid] = {"type": call.data, "step": "phone"}
     bot.answer_callback_query(call.id)
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.add(telebot.types.KeyboardButton("📱 ارسال شماره"))
-    bot.send_message(cid, "📞 لطفاً شماره تماس خود را وارد کنید:", reply_markup=markup)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add(types.KeyboardButton("📱 ارسال شماره", request_contact=True))
+    bot.edit_message_text(chat_id=cid, message_id=call.message.message_id, text="🌟 انتخاب ثبت شد!")
+    bot.send_message(cid, "📞 شماره تماس خود را وارد کنید:", reply_markup=markup)
 
+# دریافت شماره تماس (از دکمه)
 @bot.message_handler(content_types=['contact'], func=lambda message: user_data.get(message.chat.id, {}).get("step") == "phone")
 def handle_contact(message):
     cid = message.chat.id
     phone = message.contact.phone_number
     user_data[cid]["phone"] = phone
     user_data[cid]["step"] = "name"
-    bot.send_message(cid, "✅ شماره شما ثبت شد. 📝 لطفاً نام خود را وارد کنید:", reply_markup=telebot.types.ReplyKeyboardRemove())
+    markup = types.ReplyKeyboardRemove()
+    bot.send_message(cid, "✅ شماره ثبت شد!\n📝 نام و نام خانوادگی را وارد کنید:", reply_markup=markup)
 
-@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "name")
+# دریافت شماره تماس (ورودی متنی)
+@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "phone" and message.content_type == "text")
+def handle_phone_text(message):
+    cid = message.chat.id
+    phone = message.text.strip()
+    user_data[cid]["phone"] = phone
+    user_data[cid]["step"] = "name"
+    markup = types.ReplyKeyboardRemove()
+    bot.send_message(cid, "✅ شماره ثبت شد!\n📝 نام و نام خانوادگی را وارد کنید:", reply_markup=markup)
+
+# دریافت نام
+@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "name" and message.content_type == "text")
 def handle_name(message):
     cid = message.chat.id
-    user_data[cid]["name"] = message.text.strip()
-    name = user_data[cid].get("name", "نام ناشناخته")
-    phone = user_data[cid].get("phone", "شماره ناشناخته")
-    visa_type = {"visa_tour": "توریستی", "visa_work": "کاری", "visa_study": "تحصیلی"}[user_data[cid]["type"]]
-    bot.send_message(ADMIN_ID, f"🔔 درخواست جدید neovisa: 👤 {name} 📱 {phone} 🌐 {visa_type}", parse_mode="Markdown")
-    bot.send_message(cid, "🎉 درخواست شما ثبت شد! 📞 تیم neovisa تماس می‌گیرد.", parse_mode="Markdown")
+    if cid in user_data and "name" not in user_data[cid]:
+        user_data[cid]["name"] = message.text.strip()
+        user_data[cid]["step"] = "details"
+        if user_data[cid].get("type") == "spain":
+            send_spain_questions(cid)
+        elif user_data[cid].get("type") == "other":
+            send_other_questions(cid)
+    else:
+        bot.send_message(cid, "❌ خطا! لطفاً دوباره /start را بزنید.")
+
+# سوالات تخصصی برای اقامت اسپانیا
+def send_spain_questions(cid):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🎓 تحصیل", callback_data="spain_edu"),
+               types.InlineKeyboardButton("💼 کار", callback_data="spain_work"))
+    markup.add(types.InlineKeyboardButton("🏡 سرمایه‌گذاری", callback_data="spain_invest"))
+    bot.send_message(cid, "🌍 گزینه‌های اقامت اسپانیا:\nلطفاً یکی را انتخاب کنید:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data in ["spain_edu", "spain_work", "spain_invest"])
+def process_spain_details(call):
+    cid = call.message.chat.id
+    user_data[cid]["details"] = call.data.replace("spain_", "")
+    bot.answer_callback_query(call.id)
+    if call.data == "spain_edu":
+        bot.send_message(cid, "📜 دانشگاه، رشته، و سطح تحصیل را وارد کنید:")
+    elif call.data == "spain_work":
+        bot.send_message(cid, "💼 شغل، تجربه کاری، و مدرک تحصیلی را بنویسید:")
+    elif call.data == "spain_invest":
+        bot.send_message(cid, "🏡 میزان سرمایه، نوع ملک، و منبع مالی را وارد کنید:")
+    user_data[cid]["step"] = "final_details"
+
+# سوالات تخصصی برای سایر کشورها
+def send_other_questions(cid):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🇨🇦 کانادا", callback_data="other_canada"),
+               types.InlineKeyboardButton("🇩🇪 آلمان", callback_data="other_germany"))
+    markup.add(types.InlineKeyboardButton("🇦🇺 استرالیا", callback_data="other_australia"),
+               types.InlineKeyboardButton("🇯🇵 ژاپن", callback_data="other_japan"))
+    markup.add(types.InlineKeyboardButton("🇪🇺 شنگن", callback_data="other_schengen"),
+               types.InlineKeyboardButton("🇬🇧 انگلستان", callback_data="other_uk"))
+    bot.send_message(cid, "🌐 کشور یا ویزای مورد نظر را انتخاب کنید:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data in ["other_canada", "other_germany", "other_australia", "other_japan", "other_schengen", "other_uk"])
+def process_other_details(call):
+    cid = call.message.chat.id
+    user_data[cid]["details"] = call.data.replace("other_", "")
+    bot.answer_callback_query(call.id)
+    if call.data == "other_canada":
+        bot.send_message(cid, "🇨🇦 برنامه مهاجرتی، امتیاز CRS، و مدرک زبان را وارد کنید:")
+    elif call.data == "other_germany":
+        bot.send_message(cid, "🇩🇪 نوع ویزا، مدرک زبان، و تجربه کاری را بنویسید:")
+    elif call.data == "other_australia":
+        bot.send_message(cid, "🇦🇺 نوع ویزا، امتیاز سیستم، و مدرک زبان را وارد کنید:")
+    elif call.data == "other_japan":
+        bot.send_message(cid, "🇯🇵 نوع ویزا، مدرک زبان ژاپنی، و سابقه کاری را بنویسید:")
+    elif call.data == "other_schengen":
+        bot.send_message(cid, "🇪🇺 هدف ویزا، مدت اقامت، و مدارک دعوت‌نامه را مشخص کنید:")
+    elif call.data == "other_uk":
+        bot.send_message(cid, "🇬🇧 نوع ویزا، مدرک زبان، و هدف مهاجرت را وارد کنید:")
+    user_data[cid]["step"] = "final_details"
+
+# دریافت جزئیات نهایی
+@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details")
+def handle_final_details(message):
+    cid = message.chat.id
+    details = message.text
+    user_data[cid]["details"] += f" | {details}" if user_data[cid].get("details") else details
+    name = user_data[cid]["name"]
+    phone = user_data[cid]["phone"]
+    consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
+    bot.send_message(ADMIN_ID, f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}", parse_mode="Markdown")
     del user_data[cid]
 
+# پیکربندی webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     if request.headers.get("content-type") == "application/json":
@@ -71,8 +152,12 @@ def webhook():
         update = telebot.types.Update.de_json(json_string)
         bot.process_new_updates([update])
         return "", 200
-    return "Unsupported", 403
+    return "", 403
+
+@app.route("/")
+def index():
+    return "ربات نئوویزا فعال است ⚖️"
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))  # پورت Render
+    port = int(os.getenv("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
