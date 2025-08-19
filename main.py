@@ -43,9 +43,9 @@ def process_consultation_type(call):
     user_data[cid] = {"type": call.data, "step": "phone"}
     bot.answer_callback_query(call.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.add(types.KeyboardButton("📱 ارسال شماره", request_contact=True))  # درخواست مستقیم تماس
+    markup.add(types.KeyboardButton("📱 ارسال شماره", request_contact=True))
     bot.edit_message_text(chat_id=cid, message_id=call.message.message_id, text="🌟 انتخاب ثبت شد!")
-    bot.send_message(cid, "📞 شماره تماس خود را وارد کنید یا دکمه زیر را بزنید:", reply_markup=markup)
+    bot.send_message(cid, "📞 شماره تماس خود را وارد کنید:", reply_markup=markup)
 
 # دریافت شماره تماس (از دکمه)
 @bot.message_handler(content_types=['contact'], func=lambda message: user_data.get(message.chat.id, {}).get("step") == "phone")
@@ -68,15 +68,18 @@ def handle_phone_text(message):
     bot.send_message(cid, "✅ شماره ثبت شد!\n📝 نام و نام خانوادگی را وارد کنید:", reply_markup=markup)
 
 # دریافت نام
-@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "name")
+@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "name" and message.content_type == "text")
 def handle_name(message):
     cid = message.chat.id
-    user_data[cid]["name"] = message.text.strip()
-    user_data[cid]["step"] = "details"
-    if user_data[cid]["type"] == "spain":
-        send_spain_questions(cid)
+    if cid in user_data and "name" not in user_data[cid]:  # دیباگ موقت
+        user_data[cid]["name"] = message.text.strip()
+        user_data[cid]["step"] = "details"
+        if user_data[cid]["type"] == "spain":
+            send_spain_questions(cid)
+        else:
+            send_other_questions(cid)
     else:
-        send_other_questions(cid)
+        bot.send_message(cid, "❌ خطا! لطفاً دوباره /start را بزنید.")
 
 # سوالات تخصصی برای اقامت اسپانیا
 def send_spain_questions(cid):
