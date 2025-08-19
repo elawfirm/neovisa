@@ -74,7 +74,6 @@ def handle_name(message):
     if cid in user_data and "name" not in user_data[cid]:
         user_data[cid]["name"] = message.text.strip()
         user_data[cid]["step"] = "details"
-        bot.send_message(cid, f"🔍 دیباگ: نوع انتخاب‌شده: {user_data[cid].get('type')}")  # دیباگ موقت
         if user_data[cid].get("type") == "spain":
             send_spain_questions(cid)
         elif user_data[cid].get("type") == "other":
@@ -134,9 +133,10 @@ def process_other_details(call):
     user_data[cid]["step"] = "final_details"
 
 # دریافت جزئیات نهایی
-@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details")
+@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details" and message.content_type == "text")
 def handle_final_details(message):
     cid = message.chat.id
+    bot.send_message(cid, "🔍 دیباگ: رسیدم به مرحله نهایی!")  # دیباگ موقت
     details = message.text
     user_data[cid]["details"] += f" | {details}" if user_data[cid].get("details") else details
     name = user_data[cid]["name"]
