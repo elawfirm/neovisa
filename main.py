@@ -137,7 +137,6 @@ def process_other_details(call):
 def handle_final_details(message):
     cid = message.chat.id
     if all(key in user_data[cid] for key in ["name", "phone", "details"]):  # چک کامل بودن داده‌ها
-        bot.send_message(cid, "🔍 دیباگ: رسیدم به مرحله نهایی!")
         details = message.text
         user_data[cid]["details"] += f" | {details}" if user_data[cid].get("details") else details
         name = user_data[cid]["name"]
@@ -152,7 +151,7 @@ def handle_final_details(message):
 # پیکربندی webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    if request.headers.get("content-type") == "application/json":
+    if request.headers.get("content-type") == "application/json"):
         json_string = request.get_data().decode("utf-8")
         update = telebot.types.Update.de_json(json_string)
         bot.process_new_updates([update])
