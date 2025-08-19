@@ -17,20 +17,16 @@ user_data = {}
 # تنظیم خودکار Webhook
 def set_webhook():
     try:
-        bot.remove_webhook()  # حذف Webhook قبلی
-        time.sleep(1)  # صبر برای اطمینان
-        status = bot.set_webhook(url=WEBHOOK_URL)
-        if status:
-            print(f"Webhook successfully set to {WEBHOOK_URL}")
-        else:
-            print(f"Failed to set webhook to {WEBHOOK_URL}")
-    except Exception as e:
-        print(f"Error setting webhook: {e}")
+        bot.remove_webhook()
+        time.sleep(1)
+        bot.set_webhook(url=WEBHOOK_URL)
+    except:
+        pass  # خطاها رو نادیده می‌گیریم تا برنامه متوقف نشه
 
 # فراخوانی تنظیم Webhook موقع شروع
 set_webhook()
 
-# پیام خوش‌آمدگویی حرفه‌ای و مشتری‌جذب
+# پیام خوش‌آمدگویی
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     cid = message.chat.id
@@ -38,7 +34,7 @@ def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🌍 اقامت اسپانیا", callback_data="spain"),
                types.InlineKeyboardButton("🌐 سایر کشورها", callback_data="other"))
-    bot.send_message(cid, "⚖️ *خوش آمدید به نئوویزا!* 🌍\nما راهنمای شما در مسیر مهاجرت و حل مسائل حقوقی هستیم.\n📜 با انتخاب گزینه زیر، اولین قدم را بردارید:", parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(cid, "⚖️ *خوش آمدید به نئوویزا!* 🌍\n📜 نوع خدمت را انتخاب کنید:", parse_mode="Markdown", reply_markup=markup)
 
 # پردازش انتخاب نوع مشاوره
 @bot.callback_query_handler(func=lambda call: call.data in ["spain", "other"])
@@ -48,8 +44,8 @@ def process_consultation_type(call):
     bot.answer_callback_query(call.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("📱 ارسال شماره"))
-    bot.edit_message_text(chat_id=cid, message_id=call.message.message_id, text="🌟 انتخاب شما ثبت شد! ⚖️")
-    bot.send_message(cid, "📞 شماره تماس خود را وارد کنید یا دکمه زیر را بزنید:\nما در کنارتان هستیم!", reply_markup=markup)
+    bot.edit_message_text(chat_id=cid, message_id=call.message.message_id, text="🌟 انتخاب ثبت شد!")
+    bot.send_message(cid, "📞 شماره تماس خود را وارد کنید:", reply_markup=markup)
 
 # دریافت شماره تماس
 @bot.message_handler(content_types=['contact'], func=lambda message: user_data.get(message.chat.id, {}).get("step") == "phone")
@@ -59,13 +55,13 @@ def handle_contact(message):
     user_data[cid]["phone"] = phone
     user_data[cid]["step"] = "name"
     markup = types.ReplyKeyboardRemove()
-    bot.send_message(cid, "✅ شماره شما ثبت شد! 🌍\n📝 لطفاً نام و نام خانوادگی خود را وارد کنید:", reply_markup=markup)
+    bot.send_message(cid, "✅ شماره ثبت شد!\n📝 نام و نام خانوادگی را وارد کنید:", reply_markup=markup)
 
 # دریافت نام
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "name")
 def handle_name(message):
     cid = message.chat.id
-    user_data[cid]["name"] = message.text
+    user_data[cid]["name"] = message.text.strip()
     user_data[cid]["step"] = "details"
     if user_data[cid]["type"] == "spain":
         send_spain_questions(cid)
@@ -78,7 +74,7 @@ def send_spain_questions(cid):
     markup.add(types.InlineKeyboardButton("🎓 تحصیل", callback_data="spain_edu"),
                types.InlineKeyboardButton("💼 کار", callback_data="spain_work"))
     markup.add(types.InlineKeyboardButton("🏡 سرمایه‌گذاری", callback_data="spain_invest"))
-    bot.send_message(cid, "🌍 *گزینه‌های اقامت اسپانیا:* ⚖️\nلطفاً یکی را انتخاب کنید و مسیر مهاجرت خود را روشن کنید:", parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(cid, "🌍 گزینه‌های اقامت اسپانیا:\nلطفاً یکی را انتخاب کنید:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data in ["spain_edu", "spain_work", "spain_invest"])
 def process_spain_details(call):
@@ -86,11 +82,11 @@ def process_spain_details(call):
     user_data[cid]["details"] = call.data.replace("spain_", "")
     bot.answer_callback_query(call.id)
     if call.data == "spain_edu":
-        bot.send_message(cid, "📜 نام دانشگاه، رشته، و سطح تحصیل (لیسانس/فوق/دکتری) را وارد کنید:")
+        bot.send_message(cid, "📜 دانشگاه، رشته، و سطح تحصیل را وارد کنید:")
     elif call.data == "spain_work":
-        bot.send_message(cid, "💼 شغل، تجربه کاری (سال)، و مدرک تحصیلی را بنویسید:")
+        bot.send_message(cid, "💼 شغل، تجربه کاری، و مدرک تحصیلی را بنویسید:")
     elif call.data == "spain_invest":
-        bot.send_message(cid, "🏡 میزان سرمایه (یورو)، نوع ملک، و منبع مالی را وارد کنید:")
+        bot.send_message(cid, "🏡 میزان سرمایه، نوع ملک، و منبع مالی را وارد کنید:")
     user_data[cid]["step"] = "final_details"
 
 # سوالات تخصصی برای سایر کشورها
@@ -102,7 +98,7 @@ def send_other_questions(cid):
                types.InlineKeyboardButton("🇯🇵 ژاپن", callback_data="other_japan"))
     markup.add(types.InlineKeyboardButton("🇪🇺 شنگن", callback_data="other_schengen"),
                types.InlineKeyboardButton("🇬🇧 انگلستان", callback_data="other_uk"))
-    bot.send_message(cid, "🌐 *کشور یا ویزای مورد نظر:* ⚖️\nلطفاً انتخاب کنید تا سفری مطمئن بسازیم:", parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(cid, "🌐 کشور یا ویزای مورد نظر را انتخاب کنید:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data in ["other_canada", "other_germany", "other_australia", "other_japan", "other_schengen", "other_uk"])
 def process_other_details(call):
@@ -110,17 +106,17 @@ def process_other_details(call):
     user_data[cid]["details"] = call.data.replace("other_", "")
     bot.answer_callback_query(call.id)
     if call.data == "other_canada":
-        bot.send_message(cid, "🇨🇦 برنامه مهاجرتی، امتیاز CRS، و مدرک زبان (آیلتس/تافل) را وارد کنید:")
+        bot.send_message(cid, "🇨🇦 برنامه مهاجرتی، امتیاز CRS، و مدرک زبان را وارد کنید:")
     elif call.data == "other_germany":
-        bot.send_message(cid, "🇩🇪 نوع ویزا، مدرک زبان (آلمانی/انگلیسی)، و تجربه کاری را بنویسید:")
+        bot.send_message(cid, "🇩🇪 نوع ویزا، مدرک زبان، و تجربه کاری را بنویسید:")
     elif call.data == "other_australia":
-        bot.send_message(cid, "🇦🇺 نوع ویزا، امتیاز سیستم، و مدرک زبان (آیلتس/پری) را وارد کنید:")
+        bot.send_message(cid, "🇦🇺 نوع ویزا، امتیاز سیستم، و مدرک زبان را وارد کنید:")
     elif call.data == "other_japan":
-        bot.send_message(cid, "🇯🇵 نوع ویزا، مدرک زبان ژاپنی (JLPT)، و سابقه کاری را بنویسید:")
+        bot.send_message(cid, "🇯🇵 نوع ویزا، مدرک زبان ژاپنی، و سابقه کاری را بنویسید:")
     elif call.data == "other_schengen":
-        bot.send_message(cid, "🇪🇺 هدف ویزا، مدت اقامت (روز)، و مدارک دعوت‌نامه (در صورت وجود) را مشخص کنید:")
+        bot.send_message(cid, "🇪🇺 هدف ویزا، مدت اقامت، و مدارک دعوت‌نامه را مشخص کنید:")
     elif call.data == "other_uk":
-        bot.send_message(cid, "🇬🇧 نوع ویزا (تحصیل، کار، توریستی)، مدرک زبان (آیلتس/UKVI)، و هدف مهاجرت را وارد کنید:")
+        bot.send_message(cid, "🇬🇧 نوع ویزا، مدرک زبان، و هدف مهاجرت را وارد کنید:")
     user_data[cid]["step"] = "final_details"
 
 # دریافت جزئیات نهایی
@@ -133,7 +129,6 @@ def handle_final_details(message):
     phone = user_data[cid]["phone"]
     consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
     bot.send_message(ADMIN_ID, f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}", parse_mode="Markdown")
-    bot.send_message(cid, "🎉 *درخواست شما ثبت شد!* ✅\n📞 تیم نئوویزا به زودی با شما تماس می‌گیرد.\n🌍 با ما به رویاهایتان نزدیک‌تر شوید!", parse_mode="Markdown")
     del user_data[cid]  # پاک کردن داده‌ها بعد از تکمیل
 
 # پیکربندی webhook
