@@ -3,7 +3,7 @@ from flask import Flask, request
 import os
 
 TOKEN = os.getenv("TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa.onrender.com/webhook")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa-1.onrender.com/webhook")
 ADMIN_ID = 7549512366
 
 bot = telebot.TeleBot(TOKEN)
@@ -101,10 +101,6 @@ def webhook():
         bot.process_new_updates([update])
         return "", 200
     return "", 403
-
-import telebot.apihelper
-bot.remove_webhook()
-bot.set_webhook(url=WEBHOOK_URL)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5002))
