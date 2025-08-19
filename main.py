@@ -143,10 +143,23 @@ def handle_final_details(message):
         phone = user_data[cid]["phone"]
         consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
         bot.send_message(ADMIN_ID, f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}", parse_mode="Markdown")
-        bot.send_message(cid, "🎉 درخواست شما ثبت شد! تیم نئوویزا به زودی تماس می‌گیرد.")
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("🔄 درخواست جدید", callback_data="new_request"))
+        bot.send_message(cid, "🎉 درخواست شما ثبت شد! تیم نئوویزا به زودی تماس می‌گیرد.\nبرای درخواست جدید، کلیک کنید:", reply_markup=markup)
         del user_data[cid]
     else:
         bot.send_message(cid, "❌ داده‌ها ناقصند! لطفاً دوباره /start را بزنید.")
+
+# پردازش درخواست جدید
+@bot.callback_query_handler(func=lambda call: call.data == "new_request")
+def process_new_request(call):
+    cid = call.message.chat.id
+    user_data[cid] = {}
+    bot.answer_callback_query(call.id)
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🌍 اقامت اسپانیا", callback_data="spain"),
+               types.InlineKeyboardButton("🌐 سایر کشورها", callback_data="other"))
+    bot.send_message(cid, "⚖️ *خوش آمدید به نئوویزا!* 🌍\n📜 نوع خدمت را انتخاب کنید:", parse_mode="Markdown", reply_markup=markup)
 
 # پیکربندی webhook
 @app.route("/webhook", methods=["POST"])
