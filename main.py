@@ -6,10 +6,7 @@ from flask import Flask, request
 from datetime import datetime
 
 # ===== تنظیمات اولیه =====
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")  # توکن مستقیم برای تست
-if not TOKEN:
-    raise ValueError("❌ خطا: متغیر محیطی TELEGRAM_BOT_TOKEN تنظیم نشده است")
-
+TOKEN = "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0"  # توکن مستقیم برای تست
 try:
     import sys
     print(f"🔍 دیباگ - نسخه پایتون: {sys.version}", flush=True)
