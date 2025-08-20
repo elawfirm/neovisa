@@ -20,19 +20,18 @@ def set_webhook():
         bot.remove_webhook()
         time.sleep(1)
         bot.set_webhook(url=WEBHOOK_URL)
-        print(f"Webhook تنظیم شد: {WEBHOOK_URL}")
+        print(f"🔧 Webhook تنظیم شد: {WEBHOOK_URL}")
     except Exception as e:
-        print(f"خطا در تنظیم Webhook: {e}")
+        print(f"❌ خطا در تنظیم Webhook: {e}")
 
-# فراخوانی تنظیم Webhook
 set_webhook()
 
 # پیام خوش‌آمدگویی
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     cid = message.chat.id
-    user_data[cid] = {"step": "start"}
-    print(f"دیباگ - /start برای {cid}")
+    user_data[cid] = {"step": "type_select"}
+    print(f"🔍 دیباگ - /start برای {cid}")
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🌍 اقامت اسپانیا", callback_data="spain"),
                types.InlineKeyboardButton("🌐 سایر کشورها", callback_data="other"))
@@ -42,8 +41,8 @@ def send_welcome(message):
 @bot.callback_query_handler(func=lambda call: call.data in ["spain", "other"])
 def process_consultation_type(call):
     cid = call.message.chat.id
-    user_data[cid] = {"type": call.data, "step": "phone"}
-    print(f"دیباگ - نوع مشاوره برای {cid}: {call.data}")
+    user_data[cid] = {"type": call.data, "step": "final_details"}
+    print(f"🔍 دیباگ - نوع مشاوره برای {cid}: {call.data}")
     bot.answer_callback_query(call.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("📱 ارسال شماره", request_contact=True))
@@ -51,24 +50,24 @@ def process_consultation_type(call):
     bot.send_message(cid, "📞 شماره تماس خود را وارد کنید:", reply_markup=markup)
 
 # دریافت شماره تماس (از دکمه)
-@bot.message_handler(content_types=['contact'], func=lambda message: user_data.get(message.chat.id, {}).get("step") == "phone")
+@bot.message_handler(content_types=['contact'], func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details")
 def handle_contact(message):
     cid = message.chat.id
     user_data[cid] = user_data.get(cid, {})
     user_data[cid]["phone"] = message.contact.phone_number
     user_data[cid]["step"] = "name"
-    print(f"دیباگ - شماره برای {cid}: {user_data[cid]['phone']}")
+    print(f"🔍 دیباگ - شماره برای {cid}: {user_data[cid]['phone']}")
     markup = types.ReplyKeyboardRemove()
     bot.send_message(cid, "✅ شماره ثبت شد!\n📝 نام و نام خانوادگی را وارد کنید:", reply_markup=markup)
 
 # دریافت شماره تماس (ورودی متنی)
-@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "phone" and message.content_type == "text")
+@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details" and message.content_type == "text")
 def handle_phone_text(message):
     cid = message.chat.id
     user_data[cid] = user_data.get(cid, {})
     user_data[cid]["phone"] = message.text.strip()
     user_data[cid]["step"] = "name"
-    print(f"دیباگ - شماره متنی برای {cid}: {user_data[cid]['phone']}")
+    print(f"🔍 دیباگ - شماره متنی برای {cid}: {user_data[cid]['phone']}")
     markup = types.ReplyKeyboardRemove()
     bot.send_message(cid, "✅ شماره ثبت شد!\n📝 نام و نام خانوادگی را وارد کنید:", reply_markup=markup)
 
@@ -79,84 +78,24 @@ def handle_name(message):
     user_data[cid] = user_data.get(cid, {})
     if "name" not in user_data[cid]:
         user_data[cid]["name"] = message.text.strip()
-        user_data[cid]["step"] = "details"
-        print(f"دیباگ - نام برای {cid}: {user_data[cid]['name']}")
-        if user_data[cid].get("type") == "spain":
-            send_spain_questions(cid)
-        elif user_data[cid].get("type") == "other":
-            send_other_questions(cid)
+        user_data[cid]["step"] = "final_details"
+        print(f"🔍 دیباگ - نام برای {cid}: {user_data[cid]['name']}")
+        bot.send_message(cid, "📝 جزئیات درخواست خود را وارد کنید (مثلاً تحصیل، کار، یا مهاجرت):")
     else:
         bot.send_message(cid, "❌ خطا! لطفاً دوباره /start را بزنید.")
-
-# سوالات تخصصی برای اقامت اسپانیا
-def send_spain_questions(cid):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🎓 تحصیل", callback_data="spain_edu"),
-               types.InlineKeyboardButton("💼 کار", callback_data="spain_work"))
-    markup.add(types.InlineKeyboardButton("🏡 سرمایه‌گذاری", callback_data="spain_invest"))
-    print(f"دیباگ - سؤالات اسپانیا برای {cid}")
-    bot.send_message(cid, "🌍 گزینه‌های اقامت اسپانیا:\nلطفاً یکی را انتخاب کنید:", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda call: call.data in ["spain_edu", "spain_work", "spain_invest"])
-def process_spain_details(call):
-    cid = call.message.chat.id
-    user_data[cid] = user_data.get(cid, {})
-    user_data[cid]["details"] = call.data.replace("spain_", "")
-    user_data[cid]["step"] = "final_details"
-    print(f"دیباگ - جزئیات اسپانیا برای {cid}: {user_data[cid]['details']}")
-    bot.answer_callback_query(call.id)
-    if call.data == "spain_edu":
-        bot.send_message(cid, "📜 دانشگاه، رشته، و سطح تحصیل را وارد کنید:")
-    elif call.data == "spain_work":
-        bot.send_message(cid, "💼 شغل، تجربه کاری، و مدرک تحصیلی را بنویسید:")
-    elif call.data == "spain_invest":
-        bot.send_message(cid, "🏡 میزان سرمایه، نوع ملک، و منبع مالی را وارد کنید:")
-
-# سوالات تخصصی برای سایر کشورها
-def send_other_questions(cid):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🇨🇦 کانادا", callback_data="other_canada"),
-               types.InlineKeyboardButton("🇩🇪 آلمان", callback_data="other_germany"))
-    markup.add(types.InlineKeyboardButton("🇦🇺 استرالیا", callback_data="other_australia"),
-               types.InlineKeyboardButton("🇯🇵 ژاپن", callback_data="other_japan"))
-    markup.add(types.InlineKeyboardButton("🇪🇺 شنگن", callback_data="other_schengen"),
-               types.InlineKeyboardButton("🇬🇧 انگلستان", callback_data="other_uk"))
-    print(f"دیباگ - سؤالات سایر کشورها برای {cid}")
-    bot.send_message(cid, "🌐 کشور یا ویزای مورد نظر را انتخاب کنید:", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda call: call.data in ["other_canada", "other_germany", "other_australia", "other_japan", "other_schengen", "other_uk"])
-def process_other_details(call):
-    cid = call.message.chat.id
-    user_data[cid] = user_data.get(cid, {})
-    user_data[cid]["details"] = call.data.replace("other_", "")
-    user_data[cid]["step"] = "final_details"
-    print(f"دیباگ - جزئیات سایر کشورها برای {cid}: {user_data[cid]['details']}")
-    bot.answer_callback_query(call.id)
-    if call.data == "other_canada":
-        bot.send_message(cid, "🇨🇦 برنامه مهاجرتی، امتیاز CRS، و مدرک زبان را وارد کنید:")
-    elif call.data == "other_germany":
-        bot.send_message(cid, "🇩🇪 نوع ویزا، مدرک زبان، و تجربه کاری را بنویسید:")
-    elif call.data == "other_australia":
-        bot.send_message(cid, "🇦🇺 نوع ویزا، امتیاز سیستم، و مدرک زبان را وارد کنید:")
-    elif call.data == "other_japan":
-        bot.send_message(cid, "🇯🇵 نوع ویزا، مدرک زبان ژاپنی، و سابقه کاری را بنویسید:")
-    elif call.data == "other_schengen":
-        bot.send_message(cid, "🇪🇺 هدف ویزا، مدت اقامت، و مدارک دعوت‌نامه را مشخص کنید:")
-    elif call.data == "other_uk":
-        bot.send_message(cid, "🇬🇧 نوع ویزا، مدرک زبان، و هدف مهاجرت را وارد کنید:")
 
 # دریافت جزئیات نهایی
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details" and message.content_type == "text")
 def handle_final_details(message):
     cid = message.chat.id
     user_data[cid] = user_data.get(cid, {})
-    print(f"دیباگ - جزئیات نهایی برای {cid}: {message.text}")
-    if all(key in user_data[cid] for key in ["name", "phone", "details", "type"]):
+    print(f"🔍 دیباگ - جزئیات نهایی برای {cid}: {message.text}")
+    if all(key in user_data[cid] for key in ["name", "phone", "type"]):
         details = message.text
-        user_data[cid]["details"] += f" | {details}" if user_data[cid].get("details") else details
+        user_data[cid]["details"] = details
         name = user_data[cid]["name"]
         phone = user_data[cid]["phone"]
-        consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
+        consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else "اقامت سایر کشورها"
         bot.send_message(ADMIN_ID, f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}", parse_mode="Markdown")
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🔄 درخواست جدید", callback_data="new_request"))
@@ -169,8 +108,8 @@ def handle_final_details(message):
 @bot.callback_query_handler(func=lambda call: call.data == "new_request")
 def process_new_request(call):
     cid = call.message.chat.id
-    user_data[cid] = {"step": "start"}
-    print(f"دیباگ - درخواست جدید برای {cid}")
+    user_data[cid] = {"step": "type_select"}
+    print(f"🔍 دیباگ - درخواست جدید برای {cid}")
     bot.answer_callback_query(call.id)
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🌍 اقامت اسپانیا", callback_data="spain"),
@@ -182,7 +121,7 @@ def process_new_request(call):
 def handle_unknown(message):
     cid = message.chat.id
     if cid not in user_data or user_data[cid].get("step") is None:
-        print(f"دیباگ - پیام ناموفق برای {cid}")
+        print(f"🔍 دیباگ - پیام ناموفق برای {cid}")
         bot.send_message(cid, "❌ دستور نامعتبر! لطفاً با /start شروع کنید.")
 
 # پیکربندی webhook
@@ -191,6 +130,7 @@ def webhook():
     if request.headers.get("content-type") == "application/json":
         json_string = request.get_data().decode("utf-8")
         update = telebot.types.Update.de_json(json_string)
+        print(f"🔍 دیباگ - دریافت آپدیت: {json_string[:100]}...")  # فقط 100 کاراکتر اول
         bot.process_new_updates([update])
         return "", 200
     return "", 403
