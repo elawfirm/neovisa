@@ -6,7 +6,7 @@ import time
 
 # 🔑 تنظیمات (از محیط یا مقدار پیش‌فرض)
 TOKEN = os.getenv("TOKEN", "8010785406:AAGU3XARPR_GzihDYS8T624bPTEU8ildmQ8")
-ADMIN_ID = int(os.getenv("ADMIN_ID", 7549512366))
+ADMIN_ID = int(os.getenv("ADMIN_ID", 7549512366))   # ✅ تبدیل به int
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://bot-ltl5.onrender.com/webhook")
 
 # 📌 پیکربندی ربات و Flask
@@ -152,6 +152,10 @@ def handle_final_details(message):
         phone = user_data[cid]["phone"]
         consultation_type = "اقامت اسپانیا" if user_data[cid]["type"] == "spain" else f"اقامت {user_data[cid]['details'].split('|')[0]}"
 
+        # ✅ پیام تست برای کاربر
+        bot.send_message(cid, "⏳ اطلاعات شما ثبت شد، در حال ارسال به ادمین ...")
+
+        # ارسال به ادمین
         bot.send_message(
             ADMIN_ID,
             f"🔔 *درخواست جدید نئوویزا:* ⚖️\n👤 {name}\n📱 {phone}\n🌐 {consultation_type}\n📝 {details}",
