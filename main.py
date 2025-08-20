@@ -8,7 +8,7 @@ from datetime import datetime
 import re
 
 # 🔑 تنظیمات
-TOKEN = os.getenv("TOKEN", 7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
+TOKEN = os.getenv("TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
 ADMIN_ID = int(os.getenv("ADMIN_ID", 7549512366))
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://bot-ltl5.onrender.com/webhook")
 
@@ -653,4 +653,5 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 10000))
     print(f"🚀 Starting bot on port {port}")
     app.run(host="0.0.0.0", port=port)
+
 
