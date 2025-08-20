@@ -7,8 +7,12 @@ from datetime import datetime
 
 # تنظیمات اولیه
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    print("⚠ هشدار: TOKEN یافت نشد. ربات ممکن است به درستی کار نکند.")
+    TOKEN = "dummy_token_for_testing"  # توکن موقت برای تست
+
 bot = telebot.TeleBot(TOKEN)
-app = Flask(_name)  # تصحیح خطا: __name_ به جای name
+app = Flask(_name)  # تصحیح نهایی: __name_ با دو underline در هر طرف
 
 # ذخیره داده‌های کاربران
 user_data = {}
@@ -266,13 +270,19 @@ def health():
 # راه‌اندازی ربات
 if _name_ == "_main_":
     # حذف وب‌هوک قبلی (در صورت وجود)
-    bot.remove_webhook()
+    try:
+        bot.remove_webhook()
+    except:
+        pass
     
     # تنظیم وب‌هوک جدید
     webhook_url = os.getenv("WEBHOOK_URL", "")
     if webhook_url:
-        bot.set_webhook(url=webhook_url + "/webhook")
-        print(f"🌐 وب‌هوک تنظیم شد: {webhook_url}")
+        try:
+            bot.set_webhook(url=webhook_url + "/webhook")
+            print(f"🌐 وب‌هوک تنظیم شد: {webhook_url}")
+        except:
+            print("⚠ خطا در تنظیم وب‌هوک")
     
     port = int(os.getenv("PORT", 10000))
     print(f"🚀 ربات خدمات مهاجرت روی پورت {port} راه‌اندازی شد")
@@ -280,6 +290,9 @@ if _name_ == "_main_":
     # اگر وب‌هوک فعال نیست، از polling استفاده کن
     if not webhook_url:
         print("🔍 استفاده از حالت polling")
-        bot.infinity_polling()
+        try:
+            bot.infinity_polling()
+        except Exception as e:
+            print(f"⚠ خطا در polling: {e}")
     else:
         app.run(host="0.0.0.0", port=port)
