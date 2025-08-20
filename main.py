@@ -1,18 +1,28 @@
+import os
 import time
 import telebot
 from telebot import types
 from flask import Flask, request
 from datetime import datetime
 
-# ===== توکن مستقیم (خطرناک، فقط برای تست سریع) =====
-TOKEN = "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0"
+# ===== تنظیمات اولیه =====
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")  # توکن مستقیم برای تست
+if not TOKEN:
+    raise ValueError("❌ خطا: متغیر محیطی TELEGRAM_BOT_TOKEN تنظیم نشده است")
+
+try:
+    import sys
+    print(f"🔍 دیباگ - نسخه پایتون: {sys.version}", flush=True)
+except Exception as e:
+    print(f"❌ خطا در بارگذاری پایتون: {e}", flush=True)
+    raise
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 # آدرس وبهوک
-WEBHOOK_URL = "https://bot-ltl5.onrender.com"
-WEBHOOK_SECRET = "secret123"  # می‌تونی هر چی خواستی بذاری
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://bot-ltl5.onrender.com")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "mysecret")
 
 # ذخیره داده کاربران
 user_data = {}
@@ -21,6 +31,8 @@ user_data = {}
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     cid = message.chat.id
+    user_data[cid] = {"step": "menu"}
+    print(f"🔍 دیباگ - /start برای {cid}", flush=True)
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     markup.add(
         types.KeyboardButton('📝 درخواست جدید'),
@@ -61,7 +73,7 @@ def process_new_request(call_or_message):
         "step": "type_select",
         "data": {}
     }
-
+    print(f"🔍 دیباگ - درخواست جدید برای {cid}", flush=True)
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
         types.InlineKeyboardButton("🇪🇸 اقامت اسپانیا", callback_data="spain"),
@@ -80,19 +92,17 @@ def process_new_request(call_or_message):
 def handle_country_selection(call):
     cid = call.message.chat.id
     bot.answer_callback_query(call.id)
-
-    if cid not in user_data:
+    print(f"🔍 دیباگ - انتخاب کشور برای {cid}: {call.data}", flush=True)
+    if cid not in user_data or user_data[cid].get("step") != "type_select":
         bot.send_message(cid, "⚠ لطفاً ابتدا از منوی اصلی شروع کنید.")
         return
 
     user_data[cid]["data"]["service_type"] = call.data
     user_data[cid]["step"] = "name"
-
     try:
         bot.delete_message(cid, call.message.message_id)
-    except:
-        pass
-
+    except Exception as e:
+        print(f"🔍 دیباگ - خطا در حذف پیام: {e}", flush=True)
     bot.send_message(cid, "📝 لطفاً نام و نام خانوادگی خود را وارد کنید:")
 
 # ===== انصراف =====
@@ -100,39 +110,36 @@ def handle_country_selection(call):
 def handle_cancel(call):
     cid = call.message.chat.id
     bot.answer_callback_query(call.id)
-
+    print(f"🔍 دیباگ - انصراف برای {cid}", flush=True)
     if cid in user_data:
         del user_data[cid]
-
     try:
         bot.delete_message(cid, call.message.message_id)
-    except:
-        pass
-
+    except Exception as e:
+        print(f"🔍 دیباگ - خطا در حذف پیام: {e}", flush=True)
     bot.send_message(cid, "❌ درخواست شما لغو شد. برای شروع مجدد /start را بزنید.")
 
 # ===== دریافت نام =====
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "name")
 def handle_name_input(message):
     cid = message.chat.id
+    print(f"🔍 دیباگ - دریافت نام برای {cid}: {message.text}", flush=True)
     if len(message.text.strip()) < 3:
         bot.send_message(cid, "⚠ نام وارد شده بسیار کوتاه است.")
         return
 
     user_data[cid]["data"]["name"] = message.text
     user_data[cid]["step"] = "phone"
-
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("📞 ارسال شماره تلفن", request_contact=True))
-
     bot.send_message(cid, "📞 لطفاً شماره تماس خود را ارسال کنید:", reply_markup=markup)
 
 # ===== دریافت تلفن =====
 @bot.message_handler(content_types=['contact', 'text'], func=lambda m: user_data.get(m.chat.id, {}).get("step") == "phone")
 def handle_phone_input(message):
     cid = message.chat.id
+    print(f"🔍 دیباگ - دریافت تلفن برای {cid}: {message.text if message.text else message.contact.phone_number if message.contact else 'بدون شماره'}", flush=True)
     phone = None
-
     if message.contact:
         phone = message.contact.phone_number
     else:
@@ -149,13 +156,13 @@ def handle_phone_input(message):
 @bot.message_handler(func=lambda m: user_data.get(m.chat.id, {}).get("step") == "final_details")
 def handle_final_details(message):
     cid = message.chat.id
+    print(f"🔍 دیباگ - دریافت جزئیات برای {cid}: {message.text}", flush=True)
     if len(message.text) < 20:
-        bot.send_message(cid, "⚠ توضیحات خیلی کوتاه است.")
+        bot.send_message(cid, "⚠ توضیحات خیلی کوتاه است (حداقل ۲۰ کاراکتر).")
         return
 
     user_data[cid]["data"]["details"] = message.text
     user_data[cid]["step"] = "completed"
-
     service_type = "اسپانیا" if user_data[cid]['data']['service_type'] == 'spain' else 'سایر کشورها'
     summary = f"""
 ✅ درخواست شما ثبت شد
@@ -167,15 +174,16 @@ def handle_final_details(message):
 
 📬 به زودی با شما تماس خواهیم گرفت.
     """
-    bot.send_message(cid, summary)
-    send_welcome(message)
+    bot.send_message(cid, summary, parse_mode="Markdown")
+    del user_data[cid]  # پاک کردن داده بعد از تکمیل
+    send_welcome(message)  # بازگشت به منوی اصلی
 
 # ===== سایر پیام‌ها =====
 @bot.message_handler(func=lambda m: True)
 def handle_unexpected_messages(message):
     cid = message.chat.id
     txt = message.text
-
+    print(f"🔍 دیباگ - پیام ناموفق برای {cid}: {txt}", flush=True)
     if txt == 'ℹ اطلاعات حساب':
         if cid in user_data and user_data[cid].get('step') == 'completed':
             service_type = "اسپانیا" if user_data[cid]['data']['service_type'] == 'spain' else 'سایر کشورها'
@@ -187,7 +195,7 @@ def handle_unexpected_messages(message):
 • 📞 شماره تماس: {user_data[cid]['data']['phone']}
 • 📋 وضعیت: در حال بررسی
             """
-            bot.send_message(cid, status)
+            bot.send_message(cid, status, parse_mode="Markdown")
         else:
             bot.send_message(cid, "ℹ شما هیچ درخواست فعالی ندارید.")
     elif txt == '📞 پشتیبانی':
@@ -201,9 +209,15 @@ def handle_unexpected_messages(message):
 @app.route(f"/webhook/{WEBHOOK_SECRET}", methods=["POST"])
 def webhook():
     if request.headers.get("content-type") == "application/json":
-        update = telebot.types.Update.de_json(request.get_data().decode("utf-8"))
-        bot.process_new_updates([update])
-        return "", 200
+        try:
+            json_string = request.get_data().decode("utf-8")
+            update = telebot.types.Update.de_json(json_string)
+            print(f"🔍 دیباگ - دریافت آپدیت برای {update.update_id}: {json_string[:100]}...", flush=True)
+            bot.process_new_updates([update])
+            return "", 200
+        except Exception as e:
+            print(f"❌ خطا در پردازش آپدیت: {e}", flush=True)
+            return "", 500
     return "", 403
 
 @app.route("/")
@@ -218,12 +232,10 @@ def health():
 if __name__ == "__main__":
     try:
         bot.remove_webhook()
-    except:
-        pass
-
+    except Exception as e:
+        print(f"🔍 دیباگ - خطا در حذف Webhook قبلی: {e}", flush=True)
     webhook_url = f"{WEBHOOK_URL}/webhook/{WEBHOOK_SECRET}"
     bot.set_webhook(url=webhook_url)
-
+    print(f"🚀 ربات روی پورت {os.getenv('PORT', 10000)} اجرا شد - Webhook: {webhook_url}", flush=True)
     port = int(os.getenv("PORT", 10000))
-    print(f"🚀 ربات روی پورت {port} اجرا شد - Webhook: {webhook_url}", flush=True)
     app.run(host="0.0.0.0", port=port)
