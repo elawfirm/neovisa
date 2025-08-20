@@ -7,7 +7,7 @@ import time
 # دریافت متغیرهای محیطی
 TOKEN = os.getenv("TOKEN", "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0")
 ADMIN_ID = os.getenv("ADMIN_ID", 7549512366)
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa-1.onrender.com/webhook")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://your-vps-webhook-url")  # اینجا URL VPS رو تنظیم کن
 
 # تنظیم ربات
 bot = telebot.TeleBot(TOKEN)
@@ -20,8 +20,9 @@ def set_webhook():
         bot.remove_webhook()
         time.sleep(1)
         bot.set_webhook(url=WEBHOOK_URL)
-    except:
-        pass
+        print("Webhook تنظیم شد:", WEBHOOK_URL)
+    except Exception as e:
+        print("خطا در تنظیم Webhook:", e)
 
 # فراخوانی تنظیم Webhook موقع شروع
 set_webhook()
@@ -30,7 +31,7 @@ set_webhook()
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     cid = message.chat.id
-    user_data[cid] = {}
+    user_data[cid] = {"step": "start"}
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🌍 اقامت اسپانیا", callback_data="spain"),
                types.InlineKeyboardButton("🌐 سایر کشورها", callback_data="other"))
@@ -52,6 +53,7 @@ def process_consultation_type(call):
 def handle_contact(message):
     cid = message.chat.id
     phone = message.contact.phone_number
+    user_data[cid] = user_data.get(cid, {})
     user_data[cid]["phone"] = phone
     user_data[cid]["step"] = "name"
     markup = types.ReplyKeyboardRemove()
@@ -62,6 +64,7 @@ def handle_contact(message):
 def handle_phone_text(message):
     cid = message.chat.id
     phone = message.text.strip()
+    user_data[cid] = user_data.get(cid, {})
     user_data[cid]["phone"] = phone
     user_data[cid]["step"] = "name"
     markup = types.ReplyKeyboardRemove()
@@ -71,7 +74,8 @@ def handle_phone_text(message):
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "name" and message.content_type == "text")
 def handle_name(message):
     cid = message.chat.id
-    if cid in user_data and "name" not in user_data[cid]:
+    user_data[cid] = user_data.get(cid, {})
+    if "name" not in user_data[cid]:
         user_data[cid]["name"] = message.text.strip()
         user_data[cid]["step"] = "details"
         if user_data[cid].get("type") == "spain":
@@ -92,7 +96,9 @@ def send_spain_questions(cid):
 @bot.callback_query_handler(func=lambda call: call.data in ["spain_edu", "spain_work", "spain_invest"])
 def process_spain_details(call):
     cid = call.message.chat.id
+    user_data[cid] = user_data.get(cid, {})
     user_data[cid]["details"] = call.data.replace("spain_", "")
+    user_data[cid]["step"] = "final_details"
     bot.answer_callback_query(call.id)
     if call.data == "spain_edu":
         bot.send_message(cid, "📜 دانشگاه، رشته، و سطح تحصیل را وارد کنید:")
@@ -100,7 +106,6 @@ def process_spain_details(call):
         bot.send_message(cid, "💼 شغل، تجربه کاری، و مدرک تحصیلی را بنویسید:")
     elif call.data == "spain_invest":
         bot.send_message(cid, "🏡 میزان سرمایه، نوع ملک، و منبع مالی را وارد کنید:")
-    user_data[cid]["step"] = "final_details"
 
 # سوالات تخصصی برای سایر کشورها
 def send_other_questions(cid):
@@ -116,7 +121,9 @@ def send_other_questions(cid):
 @bot.callback_query_handler(func=lambda call: call.data in ["other_canada", "other_germany", "other_australia", "other_japan", "other_schengen", "other_uk"])
 def process_other_details(call):
     cid = call.message.chat.id
+    user_data[cid] = user_data.get(cid, {})
     user_data[cid]["details"] = call.data.replace("other_", "")
+    user_data[cid]["step"] = "final_details"
     bot.answer_callback_query(call.id)
     if call.data == "other_canada":
         bot.send_message(cid, "🇨🇦 برنامه مهاجرتی، امتیاز CRS، و مدرک زبان را وارد کنید:")
@@ -130,13 +137,13 @@ def process_other_details(call):
         bot.send_message(cid, "🇪🇺 هدف ویزا، مدت اقامت، و مدارک دعوت‌نامه را مشخص کنید:")
     elif call.data == "other_uk":
         bot.send_message(cid, "🇬🇧 نوع ویزا، مدرک زبان، و هدف مهاجرت را وارد کنید:")
-    user_data[cid]["step"] = "final_details"
 
 # دریافت جزئیات نهایی
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get("step") == "final_details" and message.content_type == "text")
 def handle_final_details(message):
     cid = message.chat.id
-    if all(key in user_data[cid] for key in ["name", "phone", "details"]):  # چک کامل بودن داده‌ها
+    user_data[cid] = user_data.get(cid, {})
+    if all(key in user_data[cid] for key in ["name", "phone", "details", "type"]):
         details = message.text
         user_data[cid]["details"] += f" | {details}" if user_data[cid].get("details") else details
         name = user_data[cid]["name"]
@@ -154,17 +161,24 @@ def handle_final_details(message):
 @bot.callback_query_handler(func=lambda call: call.data == "new_request")
 def process_new_request(call):
     cid = call.message.chat.id
-    user_data[cid] = {}
+    user_data[cid] = {"step": "start"}
     bot.answer_callback_query(call.id)
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🌍 اقامت اسپانیا", callback_data="spain"),
                types.InlineKeyboardButton("🌐 سایر کشورها", callback_data="other"))
     bot.send_message(cid, "⚖️ *خوش آمدید به نئوویزا!* 🌍\n📜 نوع خدمت را انتخاب کنید:", parse_mode="Markdown", reply_markup=markup)
 
+# مدیریت پیام‌های ناموفق
+@bot.message_handler(func=lambda message: True)
+def handle_unknown(message):
+    cid = message.chat.id
+    if cid not in user_data or user_data[cid].get("step") is None:
+        bot.send_message(cid, "❌ دستور نامعتبر! لطفاً با /start شروع کنید.")
+
 # پیکربندی webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    if request.headers.get("content-type") == "application/json":  # پرانتز اضافی حذف شد
+    if request.headers.get("content-type") == "application/json":
         json_string = request.get_data().decode("utf-8")
         update = telebot.types.Update.de_json(json_string)
         bot.process_new_updates([update])
@@ -176,5 +190,5 @@ def index():
     return "ربات نئوویزا فعال است ⚖️"
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))
+    port = int(os.getenv("PORT", 5000))  # پورت پیش‌فرض برای VPS
     app.run(host="0.0.0.0", port=port)
