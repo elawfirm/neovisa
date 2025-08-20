@@ -24,6 +24,23 @@ WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "mysecret")
 # ذخیره داده کاربران
 user_data = {}
 
+# ===== تنظیم خودکار Webhook =====
+def setup_webhook():
+    try:
+        bot.remove_webhook()  # حذف Webhook قبلی
+        time.sleep(1)  # زمان برای اطمینان
+        webhook_url = f"{WEBHOOK_URL}/webhook/{WEBHOOK_SECRET}"
+        bot.set_webhook(url=webhook_url)
+        info = bot.get_webhook_info()
+        if info.url == webhook_url and info.has_custom_certificate is False:
+            print(f"🚀 Webhook با موفقیت تنظیم شد: {webhook_url}", flush=True)
+        else:
+            print(f"⚠ Webhook تنظیم نشد: {info.url}", flush=True)
+    except Exception as e:
+        print(f"❌ خطا در تنظیم Webhook: {e}", flush=True)
+
+setup_webhook()
+
 # ===== منو و شروع =====
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -229,13 +246,5 @@ def health():
 
 # ===== اجرای ربات =====
 if __name__ == "__main__":
-    try:
-        bot.remove_webhook()
-    except Exception as e:
-        print(f"🔍 دیباگ - خطا در حذف Webhook قبلی: {e}", flush=True)
-    webhook_url = f"{WEBHOOK_URL}/webhook/{WEBHOOK_SECRET}"
-    print(f"🚀 تنظیم Webhook به: {webhook_url}", flush=True)
-    bot.set_webhook(url=webhook_url)
-    print(f"🚀 ربات روی پورت {os.getenv('PORT', 10000)} اجرا شد - Webhook: {webhook_url}", flush=True)
     port = int(os.getenv("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
