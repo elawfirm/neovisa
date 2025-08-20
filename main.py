@@ -1,21 +1,18 @@
-import os
 import time
 import telebot
 from telebot import types
 from flask import Flask, request
 from datetime import datetime
 
-# ===== تنظیمات اولیه =====
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not TOKEN:
-    raise ValueError("❌ خطا: متغیر محیطی TELEGRAM_BOT_TOKEN تنظیم نشده است")
+# ===== توکن مستقیم (خطرناک، فقط برای تست سریع) =====
+TOKEN = "7902857577:AAGsWarAtHg9A8yXDApkRzCVx7dR3wFc5u0"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 # آدرس وبهوک
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://bot-ltl5.onrender.com")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "mysecret")  # می‌تونی عوض کنی
+WEBHOOK_URL = "https://bot-ltl5.onrender.com"
+WEBHOOK_SECRET = "secret123"  # می‌تونی هر چی خواستی بذاری
 
 # ذخیره داده کاربران
 user_data = {}
