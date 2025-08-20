@@ -18,7 +18,7 @@ bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 # آدرس وبهوک
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://bot-ltl5.onrender.com")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://neovisa-1.onrender.com")  # فقط دامنه
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "mysecret")
 
 # ذخیره داده کاربران
@@ -215,7 +215,9 @@ def webhook():
         except Exception as e:
             print(f"❌ خطا در پردازش آپدیت: {e}", flush=True)
             return "", 500
-    return "", 403
+    else:
+        print(f"🔍 دیباگ - درخواست نامعتبر: {request.headers.get('content-type')}", flush=True)
+        return "", 403
 
 @app.route("/")
 def index():
@@ -232,6 +234,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"🔍 دیباگ - خطا در حذف Webhook قبلی: {e}", flush=True)
     webhook_url = f"{WEBHOOK_URL}/webhook/{WEBHOOK_SECRET}"
+    print(f"🚀 تنظیم Webhook به: {webhook_url}", flush=True)
     bot.set_webhook(url=webhook_url)
     print(f"🚀 ربات روی پورت {os.getenv('PORT', 10000)} اجرا شد - Webhook: {webhook_url}", flush=True)
     port = int(os.getenv("PORT", 10000))
