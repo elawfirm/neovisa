@@ -1,2 +1,3 @@
 pyTelegramBotAPI==4.15.2
 flask==3.0.3
+telebot==4.15.2
